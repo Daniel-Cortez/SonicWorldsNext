@@ -13,19 +13,27 @@ extends Area2D
 
 var player_count = 0
 
+# this isn't the same as player_count, because if the parent object is a fan,
+# the variable is only set to true after waiting for the fan to start working
+var activated: bool = false
+
 signal player_entered
 signal all_players_exited
+
 
 func _ready():
 	visible = false
 
-
 func _physics_process(_delta: float) -> void:
+	# skip if the wind current isn't activated yet
+	if not activated:
+		return
+	
 	for player: PlayerChar in get_overlapping_bodies():
 		# ignore if player is dead or hit
-		if player.get_state() == PlayerChar.STATES.DIE or \
-			player.get_state() == PlayerChar.STATES.HIT:
-			continue
+		match player.get_state():
+			PlayerChar.STATES.DIE, PlayerChar.STATES.HIT:
+				continue
 		
 		# Ignore if the player is on a gimmick (such as a water bar
 		if player.get_active_gimmick() != null:
@@ -47,8 +55,8 @@ func _physics_process(_delta: float) -> void:
 		# right, then up/down motion works and if the current is moving up, left/right movement works...
 		# Then for everything in between, you get a mix of both.
 		var move_dir = Vector2(mod_dir.dot(Vector2(0, player.get_x_input())),
-		                       mod_dir.dot(Vector2(player.get_y_input(), 0))
-		                      )
+							   mod_dir.dot(Vector2(player.get_y_input(), 0))
+							  )
 		
 		player.movement = current_vector+(move_dir*move_speed)
 		
@@ -66,10 +74,7 @@ func _physics_process(_delta: float) -> void:
 		player.push_vertical()
 		
 		# force player direction
-		if current_vector.x > 0.0:
-			player.set_direction(PlayerChar.DIRECTIONS.RIGHT)
-		else:
-			player.set_direction(PlayerChar.DIRECTIONS.LEFT)
+		player.set_direction(PlayerChar.DIRECTIONS.RIGHT if current_vector.x > 0.0 else PlayerChar.DIRECTIONS.LEFT)
 		
 		# force slide state if the player isn't currently on a gimmick
 		if player.get_state() != PlayerChar.STATES.GIMMICK and \
@@ -80,9 +85,18 @@ func _physics_process(_delta: float) -> void:
 
 
 func _on_current_body_entered(body: PlayerChar) -> void:
-	body.set_gimmick_var("ActiveCurrent", self)
-	player_entered.emit()
 	player_count += 1
+	
+	# if this is the first player getting in and the parent object is a fan,
+	# then activate that fan and wait until it fully pulls ouut
+	if player_count == 1:
+		var parent: Node2D = get_parent()
+		if parent is GiantFan:
+			await parent.activate()
+	
+	player_entered.emit()
+	body.set_gimmick_var("ActiveCurrent", self)
+	activated = true
 
 
 func _on_current_body_exited(body: PlayerChar) -> void:
@@ -93,4 +107,9 @@ func _on_current_body_exited(body: PlayerChar) -> void:
 		
 	player_count -= 1
 	if player_count == 0:
+		var parent: Node2D = get_parent()
+		if parent is GiantFan:
+			parent.deactivate()
+		
 		all_players_exited.emit()
+		activated = false
