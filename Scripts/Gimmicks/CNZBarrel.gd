@@ -1,60 +1,28 @@
 extends Node2D
 
-# Array of Arrays for each player interacting with the gimmick...
-# Please don't access/mutate this array directly, use the relevant functions
-# or add new ones where needed.
-#
-# [n][0] - player's object id
-#
-# [n][1] - player's phase - This is their current angle spinning around the top of the barrel
-#
-# [n][2] - player's radius - The radius of their spinning - if they jump on the barrel closer to the
-#          edge, their radius will be larger. If they jump on the barrel dead center, their radius
-#          will be zero.
-#
-# [n][3] - player's z level - the z level index that the player originally entered the gimmick on.
-#          Needs to be restored after disconnecting from the gimmick. While on the gimmick, the
-#          player's z level index will be shifted every frame according to their radius and phase.
-#
+## Information about a player interacting with the gimmick.
+class PlayerInfo:
+	var player: PlayerChar ## Player's object.
+	var spin_phase: float ## Player's phase - this is their current angle spinning around the top of the barrel.
+	var spin_radius: float ## Player's radius - the radius of player's spinning. if they jump on the barrel closer to the
+	var orig_z_index: int ## Player's Z level - the z level index that the player originally entered the gimmick on.
+						  ## Needs to be restored after disconnecting from the gimmick. While on the gimmick, the
+						  ## player's z level index will be shifted every frame according to their radius and phase.
+	func _init(p_player: PlayerChar, p_spin_phase: float, p_spin_radius: float, p_orig_z_index: int) -> void:
+		player = p_player
+		spin_phase = p_spin_phase
+		spin_radius = p_spin_radius
+		orig_z_index = p_orig_z_index
+
+## Array of information for each player interacting with the gimmick...[br]
+var players: Array[PlayerInfo] = []
 # XXX - consider a statically sized array that knows the count of players at the start (possibly stored in globals?)
 # for optimal efficiency.
-var players = []
 
 # The portions of the gimmick that are AnimatableBody need to be manually repositioned
-# once we move the the barrel due to an annoying glitch in Godot.
+# once we move the barrel due to an annoying glitch in Godot.
 # See: https://github.com/godotengine/godot/issues/58269
 var bodies_to_update = []
-
-# Use to find the index of the player using the player's object ID
-# Return values are the Same as Array.find(obj), but this function takes into
-# account the specific nesting of the array and treats players[n][0] as the key
-func find_player(player):
-	for i in players.size():
-		if players[i][0] == player:
-			return i
-	return -1
-
-# Use to get the player at the index of the array.
-# Returns the player if the index isn't out of bounds, otherwise returns null.
-func get_player(index):
-	if players.size() >= index + 1:
-		return players[index][0]
-	return null
-	
-#func append_player(player, phase, radius, z_level):
-#	players.append([player, phase, radius, z_level])
-	
-func get_player_phase(index):
-	return players[index][1]
-
-func set_player_phase(index, value):
-	players[index][1] = value
-	
-func get_player_radius(index):
-	return players[index][2]
-	
-func get_player_z_level(index):
-	return players[index][3]
 
 # We want to bring the player back in a little if they are on the extreme overhang of the radius
 var max_radius = 30
@@ -124,10 +92,10 @@ func attach_player(player: PlayerChar):
 	var animator: PlayerCharAnimationPlayer = player.get_avatar().get_animator()
 	
 	# If the player is already in the array, reject the attachment attempt.
-	if find_player(player) >= 0:
+	if players.find(player) >= 0:
 		return
 
-	player.set_state(PlayerChar.STATES.GIMMICK)	
+	player.set_state(PlayerChar.STATES.GIMMICK)
 	var player_z_level = player.get_z_index()
 	var player_radius = clamp(player.global_position.x - global_position.x, -max_radius, max_radius)
 	var player_phase = 0
@@ -137,7 +105,7 @@ func attach_player(player: PlayerChar):
 		player_phase = PI
 		animator.advance(animation_offset)
 
-	players.append([player, player_phase, player_radius, player_z_level])
+	players.append(PlayerInfo.new(player, player_phase, player_radius, player_z_level))
 
 	if trampolineMode:
 		# Believe it or not, it really is this simple.
@@ -150,7 +118,7 @@ func attach_player(player: PlayerChar):
 	player.allowTranslate = true
 
 func detach_player(player: PlayerChar, index):
-	player.set_z_index(get_player_z_level(index))
+	player.set_z_index(players[index].orig_z_index)
 	players.remove_at(index)
 	
 	if player.get_state() == PlayerChar.STATES.DIE:
@@ -194,7 +162,7 @@ func _process(delta):
 		# Determine inputs, once it's available change player animations
 		# Note that we only care if one player is holding a direction even if they
 		# are fighting eachother and only the direction of current travel matters.
-		var player = get_player(index)
+		var player: PlayerChar = players[index].player
 		var playerHeldUp = false
 		var playerHeldDown = false
 		if player.inputs[player.INPUTS.YINPUT] < 0:
@@ -207,7 +175,7 @@ func _process(delta):
 		set_anim(player, playerHeldUp, playerHeldDown)
 
 		# If the player is closer to the center, the influence of their phase is diminished.
-		player.set_z_index(get_z_index() + 2 * get_player_radius(index) * -sin(get_player_phase(index)))
+		player.set_z_index(get_z_index() + roundi(2.0 * players[index].spin_radius * -sin(players[index].spin_phase)))
 
 		if player.any_action_pressed():
 			detach_player(player, index)
@@ -275,10 +243,10 @@ func _physics_process(delta):
 		physics_process_trampoline_mode(delta, upHeld, downHeld)
 
 	for index in range(players.size()):
-		var player: PlayerChar = get_player(index)
+		var player: PlayerChar = players[index].player
 		player.direction = 1
-		set_player_phase(index, get_player_phase(index) + (delta / spinning_period) * 2.0 * PI)
-		player.global_position.x = floor(body.global_position.x + get_player_radius(index) * cos(get_player_phase(index)))
+		players[index].spin_phase = players[index].spin_phase + (delta / spinning_period) * 2.0 * PI
+		player.global_position.x = floor(body.global_position.x + players[index].spin_radius * cos(players[index].spin_phase))
 		player.global_position.y = floor(body.global_position.y - player.get_predefined_hitbox(PlayerChar.HITBOXES.NORMAL).y / 2.0 - 1)
 		if player.get_state() != PlayerChar.STATES.DIE:
 			player.movement.x = 0
