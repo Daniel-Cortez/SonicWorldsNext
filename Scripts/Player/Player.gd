@@ -108,7 +108,7 @@ enum INPUTS {XINPUT, YINPUT, ACTION, ACTION2, ACTION3, SUPER, PAUSE}
 # Input control, 0 = 0ff, 1 = pressed, 2 = held
 # (for held it's best to use inputs[INPUTS.ACTION] > 0)
 # XInput and YInput are directions and are either -1, 0 or 1.
-var inputs = [0,0,0,0,0,0,0,0]
+var inputs: Array[int] = [0,0,0,0,0,0,0,0]
 const INPUTACTIONS_P1 = [["gm_left","gm_right"],["gm_up","gm_down"],"gm_action","gm_action2","gm_action3","gm_super","gm_pause"]
 const INPUTACTIONS_P2 = [["gm_left_P2","gm_right_P2"],["gm_up_P2","gm_down_P2"],"gm_action_P2","gm_action2_P2","gm_action3_P2","gm_super_P2","gm_pause_P2"]
 var inputActions = INPUTACTIONS_P1
@@ -728,7 +728,7 @@ func _set_inputs():
 
 # Controller scan functions -- so you don't have to dig into the inputs to check controller state
 ## Returns [code]true[/code] if any of the three action buttons were just pressed this frame.
-func any_action_pressed():
+func any_action_pressed() -> bool:
 	if (inputs[INPUTS.ACTION] == 1
 	or inputs[INPUTS.ACTION2] == 1 or
 	inputs[INPUTS.ACTION3] == 1):
@@ -737,7 +737,7 @@ func any_action_pressed():
 
 
 ## Returns [code]true[/code] if any of the action buttons have been held for more than one frame.
-func any_action_held():
+func any_action_held() -> bool:
 	if inputs[INPUTS.ACTION] == 2:
 		return true
 	if inputs[INPUTS.ACTION2] == 2:
@@ -747,7 +747,7 @@ func any_action_held():
 	return false
 
 ## Returns [code]true[/code] if any of the three action buttons are currently held/pressed.
-func any_action_held_or_pressed():
+func any_action_held_or_pressed() -> bool:
 	if inputs[INPUTS.ACTION] > 0:
 		return true
 	if inputs[INPUTS.ACTION2] > 0:
@@ -760,7 +760,7 @@ func any_action_held_or_pressed():
 ## This probably seems really niche, but it's useful to prevent
 ## certain jump actions from instantly turning into player specific double
 ## jump abilities.
-func convert_pressed_action_btns_to_held():
+func convert_pressed_action_btns_to_held() -> void:
 	if inputs[INPUTS.ACTION] == 1:
 		inputs[INPUTS.ACTION] = 2
 	if inputs[INPUTS.ACTION2] == 1:
@@ -769,41 +769,47 @@ func convert_pressed_action_btns_to_held():
 		inputs[INPUTS.ACTION2] = 2
 
 
-## Check the Y input of the player's controller.
-func get_y_input():
+## Check the Y input of the player's controller.[br]
+## Returns [code]-1[/code] if the player is holding [kbd]Up[/kbd] on their controller,
+## [code]1[/code] if the player is holding [kbd]Down[/kbd] on their controller,
+## or [code]0[/code] otherwise.
+func get_y_input() -> int:
 	return inputs[INPUTS.YINPUT]
 
 
 ## Check the if the player is holding [kbd]Up[/kbd] on their controller.[br]
 ## Note: a press and a hold are the same thing for directions — no effort is made to track the
 ## difference for these.
-func is_up_held():
+func is_up_held() -> bool:
 	return inputs[INPUTS.YINPUT] < 0
 
 
 ## Check the if the player is holding [kbd]Down[/kbd] on their controller.[br]
 ## Note: a press and a hold are the same thing for directions — no effort is made to track the
 ## difference for these.
-func is_down_held():
+func is_down_held() -> bool:
 	return inputs[INPUTS.YINPUT] > 0
 
 
-## Check the X input of the player's controller.
-func get_x_input():
+## Check the X input of the player's controller.[br]
+## Returns [code]-1[/code] if the player is holding [kbd]Left[/kbd] on their controller,
+## [code]1[/code] if the player is holding [kbd]Right[/kbd] on their controller,
+## or [code]0[/code] otherwise.
+func get_x_input() -> int:
 	return inputs[INPUTS.XINPUT]
 
 
 ## Check the if the player is holding [kbd]Left[/kbd] on their controller.[br]
 ## Note: a press and a hold are the same thing for directions — no effort is made to track the
 ## difference for these.
-func is_left_held():
+func is_left_held() -> bool:
 	return inputs[INPUTS.XINPUT] < 0
 
 
 ## Check the if the player is holding [kbd]Right[/kbd] on their controller.[br]
 ## Note: a press and a hold are the same thing for directions — no effort is made to track the
 ## difference for these.
-func is_right_held():
+func is_right_held() -> bool:
 	return inputs[INPUTS.XINPUT] > 0
 
 
