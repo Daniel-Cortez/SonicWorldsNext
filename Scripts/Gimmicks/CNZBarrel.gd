@@ -196,10 +196,11 @@ func _process(delta):
 		var player = get_player(index)
 		var playerHeldUp = false
 		var playerHeldDown = false
-		if player.inputs[player.INPUTS.YINPUT] < 0:
+		var y_input: int = player.get_y_input()
+		if y_input < 0:
 			upHeld = true
 			playerHeldUp = true
-		elif player.inputs[player.INPUTS.YINPUT] > 0:
+		elif y_input > 0:
 			downHeld = true
 			playerHeldDown = true
 		

@@ -20,8 +20,9 @@ func state_physics_process(delta: float) -> void:
 		return
 	
 	# set direction
-	if parent.inputs[parent.INPUTS.XINPUT] != 0:
-		parent.set_direction_signed(parent.inputs[parent.INPUTS.XINPUT])
+	var x_input: int = parent.get_x_input()
+	if x_input != 0:
+		parent.set_direction_signed(x_input)
 	elif parent.movement.x != 0:
 		parent.set_direction_signed(signf(parent.movement.x))
 	

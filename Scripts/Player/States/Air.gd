@@ -21,7 +21,7 @@ func state_activated():
 
 
 func state_process(_delta: float) -> void:
-	if parent.playerControl != 0 or (parent.inputs[parent.INPUTS.YINPUT] < 0 and parent.character == Global.CHARACTERS.TAILS):
+	if parent.playerControl != 0 or (parent.is_up_held() and parent.character == Global.CHARACTERS.TAILS):
 		# Super
 		if parent.inputs[parent.INPUTS.SUPER] == 1 and !parent.isSuper and isJump:
 			# Global emeralds use a bit flag, Global.EMERALDS.ALL would mean all 7 are 1, see bitwise operations for more info
@@ -36,10 +36,11 @@ func state_physics_process(delta: float) -> void:
 	var release_jump = physics.release_jump
 
 	# air movement
-	if (parent.inputs[parent.INPUTS.XINPUT] != 0 and parent.airControl):
-		if (parent.movement.x*parent.inputs[parent.INPUTS.XINPUT] < top_speed):
+	var x_input: int = parent.get_x_input()
+	if (x_input != 0 and parent.airControl):
+		if (parent.movement.x*x_input < top_speed):
 			if (abs(parent.movement.x) < top_speed):
-				parent.movement.x = clamp(parent.movement.x+air_accel/GlobalFunctions.div_by_delta(delta)*parent.inputs[parent.INPUTS.XINPUT],-top_speed,top_speed)
+				parent.movement.x = clampf(parent.movement.x+air_accel/GlobalFunctions.div_by_delta(delta)*x_input,-top_speed,top_speed)
 				
 	# Air drag
 	if (parent.movement.y < 0 and parent.movement.y > -release_jump * 60):
